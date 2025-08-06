@@ -1,21 +1,25 @@
 
+import { db } from '../db';
+import { pterodactylConnectionsTable } from '../db/schema';
 import { type CreateConnectionInput, type PterodactylConnection } from '../schema';
 
-export async function createConnection(input: CreateConnectionInput): Promise<PterodactylConnection> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a new Pterodactyl panel connection
-    // It should:
-    // 1. Validate the API key by making a test request to the panel
-    // 2. Store the connection details securely in the database
-    // 3. Return the created connection object
-    return Promise.resolve({
-        id: 1,
+export const createConnection = async (input: CreateConnectionInput): Promise<PterodactylConnection> => {
+  try {
+    // Insert connection record
+    const result = await db.insert(pterodactylConnectionsTable)
+      .values({
         user_id: 'default_user', // Placeholder for user authentication
         panel_url: input.panel_url,
-        api_key: input.api_key, // In real implementation, this should be encrypted
+        api_key: input.api_key,
         name: input.name,
-        is_active: true,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as PterodactylConnection);
-}
+        is_active: true // Default value from schema
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Connection creation failed:', error);
+    throw error;
+  }
+};

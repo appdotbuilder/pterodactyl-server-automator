@@ -1,13 +1,53 @@
 
+import { db } from '../db';
+import { pterodactylConnectionsTable, createdServersTable } from '../db/schema';
 import { type PterodactylConnection } from '../schema';
+import { eq, and } from 'drizzle-orm';
 
-export async function deleteConnection(connectionId: number): Promise<{ success: boolean }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to delete a Pterodactyl connection
-    // It should:
-    // 1. Validate that the connection exists and belongs to the current user
-    // 2. Check if there are any active servers using this connection
-    // 3. Either soft delete (set is_active = false) or hard delete from database
-    // 4. Return success status
-    return Promise.resolve({ success: true });
-}
+export const deleteConnection = async (connectionId: number): Promise<{ success: boolean }> => {
+  try {
+    // Check if connection exists
+    const existingConnection = await db.select()
+      .from(pterodactylConnectionsTable)
+      .where(eq(pterodactylConnectionsTable.id, connectionId))
+      .execute();
+
+    if (existingConnection.length === 0) {
+      throw new Error(`Connection with ID ${connectionId} not found`);
+    }
+
+    // Check if connection is already inactive
+    if (!existingConnection[0].is_active) {
+      throw new Error(`Connection with ID ${connectionId} is already deleted`);
+    }
+
+    // Check for active servers using this connection
+    const activeServers = await db.select()
+      .from(createdServersTable)
+      .where(
+        and(
+          eq(createdServersTable.connection_id, connectionId),
+          eq(createdServersTable.status, 'active')
+        )
+      )
+      .execute();
+
+    if (activeServers.length > 0) {
+      throw new Error(`Cannot delete connection: ${activeServers.length} active server(s) are using this connection`);
+    }
+
+    // Soft delete the connection by setting is_active to false
+    await db.update(pterodactylConnectionsTable)
+      .set({
+        is_active: false,
+        updated_at: new Date()
+      })
+      .where(eq(pterodactylConnectionsTable.id, connectionId))
+      .execute();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Connection deletion failed:', error);
+    throw error;
+  }
+};

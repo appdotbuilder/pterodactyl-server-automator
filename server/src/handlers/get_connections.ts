@@ -1,12 +1,20 @@
 
+import { db } from '../db';
+import { pterodactylConnectionsTable } from '../db/schema';
 import { type PterodactylConnection } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function getConnections(): Promise<PterodactylConnection[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all Pterodactyl connections for the current user
-    // It should:
-    // 1. Query the database for all active connections
-    // 2. Filter by user_id when authentication is implemented
-    // 3. Return the list of connections (without exposing sensitive API keys)
-    return Promise.resolve([]);
-}
+export const getConnections = async (): Promise<PterodactylConnection[]> => {
+  try {
+    // Query all active connections
+    const results = await db.select()
+      .from(pterodactylConnectionsTable)
+      .where(eq(pterodactylConnectionsTable.is_active, true))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch connections:', error);
+    throw error;
+  }
+};

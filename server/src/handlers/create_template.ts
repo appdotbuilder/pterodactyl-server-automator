@@ -1,15 +1,13 @@
 
+import { db } from '../db';
+import { serverTemplatesTable } from '../db/schema';
 import { type CreateTemplateInput, type ServerTemplate } from '../schema';
 
-export async function createTemplate(input: CreateTemplateInput): Promise<ServerTemplate> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a new server template
-    // It should:
-    // 1. Validate the template configuration
-    // 2. Store the template in the database
-    // 3. Return the created template object
-    return Promise.resolve({
-        id: 1,
+export const createTemplate = async (input: CreateTemplateInput): Promise<ServerTemplate> => {
+  try {
+    // Insert template record
+    const result = await db.insert(serverTemplatesTable)
+      .values({
         name: input.name,
         description: input.description,
         language: input.language,
@@ -20,8 +18,19 @@ export async function createTemplate(input: CreateTemplateInput): Promise<Server
         environment_variables: input.environment_variables,
         memory: input.memory,
         disk: input.disk,
-        cpu: input.cpu,
-        is_active: true,
-        created_at: new Date()
-    } as ServerTemplate);
-}
+        cpu: input.cpu
+      })
+      .returning()
+      .execute();
+
+    // Convert the database result to match the expected schema type
+    const template = result[0];
+    return {
+      ...template,
+      environment_variables: template.environment_variables as Record<string, string> | null
+    };
+  } catch (error) {
+    console.error('Template creation failed:', error);
+    throw error;
+  }
+};
